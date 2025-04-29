@@ -1,10 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>滷味報廢紀錄系統</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=s9LXZAgquyyOVLOgVpAH3m70y6_N-u_gHVD4dExENOmgxTPH8d9F5-XqqJeebTpLbZNpum4yX_IIYkJvh1_M4DuLf7zNSZaCmB-HdFdT3LSZb03KdS2j6FIXZaAnP8pEavcEM0hAe-pHcO5RaTHIDA" charset="UTF-8"></script><link rel="stylesheet" crossorigin="anonymous" href="https://gc.kis.v2.scr.kaspersky-labs.com/E3E8934C-235A-4B0E-825A-35A08381A191/abn/main.css?attr=aHR0cHM6Ly82ODA2YzBlNWQ0NDY0ZjM4NDQwYjAxZDEtLWhlcm9pYy1iaXNjdWl0LWVkOGEzYy5uZXRsaWZ5LmFwcC9saXdlaTIuaHRtbA"/><script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     body {
       font-family: sans-serif;
@@ -15,7 +16,7 @@
     input[type="text"] {
       width: calc(100% - 230px);
       padding: 8px;
-      margin: 10px 0;
+      margin: 10px 0 10px 0;
       font-size: 16px;
       box-sizing: border-box;
       display: inline-block;
@@ -43,23 +44,17 @@
     #searchBtn:hover {
       background-color: #388e3c;
     }
-    #tableSection {
-      overflow-x: auto; /* ★ 表格區塊左右滑動 */
-    }
     table {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 20px;
       font-size: 16px;
-      min-width: 600px; /* ★ 保持表格最低寬度 */
     }
     th, td {
       border: 1px solid #ccc;
       padding: 10px;
       text-align: left;
-      white-space: nowrap;    /* ★ 強制不換行 */
-      overflow: hidden;       /* ★ 超出隱藏 */
-      text-overflow: ellipsis; /* ★ 超出時顯示... */
+      word-break: break-word;
     }
     th {
       background-color: #f9f9f9;
@@ -78,9 +73,6 @@
     @media (max-width: 600px) {
       table, th, td {
         font-size: 14px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
       }
       h2, h3 {
         font-size: 18px;
@@ -88,12 +80,10 @@
     }
   </style>
 </head>
-
 <body>
   <div style="text-align: right; font-size: 14px; color: #555; margin-bottom: 5px;">
     <span id="currentDate"></span>
   </div>
-
   <h2>商品搜尋（請輸入後點選商品搜尋結果）</h2>
   <div>
     <input type="text" id="searchInput" placeholder="搜尋品名...">
@@ -215,7 +205,7 @@
       const tableSection = document.getElementById("tableSection");
       html2canvas(tableSection).then(canvas => {
         const link = document.createElement("a");
-        link.download = `滷味報廢紀錄_${new Date().toISOString().slice(0,19).replace(/[:T]/g, "-")}.png`;
+        link.download = `滷味紀錄表格_${new Date().toISOString().slice(0,19).replace(/[:T]/g, "-")}.png`;
         link.href = canvas.toDataURL();
         link.click();
       });
