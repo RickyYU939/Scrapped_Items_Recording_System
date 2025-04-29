@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>關東煮報廢紀錄系統</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 10px;
+      padding: 0;
+      background-color: #fff;
+    }
+    input[type="text"] {
+      width: calc(100% - 230px);
+      padding: 8px;
+      margin: 10px 0;
+      font-size: 16px;
+      box-sizing: border-box;
+      display: inline-block;
+    }
+    #clearSearchBtn, #searchBtn {
+      width: 100px;
+      margin-left: 5px;
+      font-size: 16px;
+      padding: 8px;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #clearSearchBtn {
+      background-color: #1976d2;
+    }
+    #clearSearchBtn:hover {
+      background-color: #1565c0;
+    }
+    #searchBtn {
+      background-color: #4caf50;
+      display: none;
+    }
+    #searchBtn:hover {
+      background-color: #388e3c;
+    }
+    #tableSection {
+      overflow-x: auto; /* ★ 外層可以左右滾動 */
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 16px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+      white-space: nowrap;     /* ★ 強制不換行 */
+      overflow: hidden;        /* ★ 超出隱藏 */
+      text-overflow: ellipsis; /* ★ 超出顯示省略號 */
+    }
+    th {
+      background-color: #f9f9f9;
+    }
+    tr.clickable:hover {
+      background-color: #f0f8ff;
+      cursor: pointer;
+    }
+    h2, h3 {
+      font-size: 20px;
+      margin-top: 20px;
+    }
+    button {
+      margin-top: 10px;
+    }
+    @media (max-width: 600px) {
+      table, th, td {
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      h2, h3 {
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div style="text-align: right; font-size: 14px; color: #555; margin-bottom: 5px;">
+    <span id="currentDate"></span>
+  </div>
+
+  <h2>商品搜尋（請輸入後點選商品搜尋結果）</h2>
+  <div>
+    <input type="text" id="searchInput" placeholder="搜尋品名...">
+    <button id="searchBtn" onclick="doSearch()">搜尋</button>
+    <button id="clearSearchBtn" onclick="clearSearch()">清除搜尋</button>
+  </div>
+
+  <div id="productContainer"></div>
+
+  <h3>點選商品數量紀錄</h3>
+  <div id="tableSection">
+    <table id="summary">
+      <thead>
+        <tr><th>品號</th><th>品名</th><th>數量</th><th>記錄時間</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <button onclick="clearSummary()">清除所有紀錄</button>
+  <button onclick="captureTable()">截圖表格</button>
+  <button onclick="location.href='index.html'">回到首頁</button>
+
+  <script>
+    const products = [
+      { code: '123543', name: '白蘿蔔' },
+      { code: '300106', name: '虱目魚丸' },
+      { code: '932419', name: '香蔥肉捲' },
+      { code: '155308', name: '中華油豆腐' },
+      { code: '318333', name: '雪白魚豆腐' },
+      { code: '352478', name: '鮮香菇' },
+      { code: '352676', name: '香甜玉米' },
+      { code: '375901', name: '杏鮑菇' },
+      { code: '581628', name: '翠玉娃娃菜' },
+      { code: '599982', name: '滷豬血' },
+      { code: '170956', name: '米血糕' },
+      { code: '488408', name: '黃金魚蛋' },
+      { code: '205579', name: '台灣黑輪' },
+      { code: '779072', name: '飛魚卵海鮮卷' },
+      { code: '383449', name: '黃金魚板' },
+      { code: '411402', name: '韓式辣味魚糕' },
+      { code: '352440', name: '茭白筍' },
+      { code: '534552', name: '章魚燒丸子' },
+      { code: '525566', name: '旗魚黑輪' },
+      { code: '380642', name: '新手工苦瓜封' },
+      { code: '632306', name: '黃金魚捲' },
+      { code: '490737', name: '手工高麗菜燒' },
+      { code: '490315', name: '花枝丸' },
+      { code: '447839', name: '原味豬肉貢丸' },
+      { code: '541335', name: '桂冠爆汁三杯蒟蒻丸' },
+      { code: '545217', name: '日本-正野燒竹輪' },
+      { code: '545324', name: '日本-正炸魚餅' },
+      { code: '593106', name: '野菜豆腐棒' },
+    ];
+
+    const summaryData = {};
+    const summaryBody = document.querySelector("#summary tbody");
+    const searchInput = document.querySelector("#searchInput");
+    const productContainer = document.getElementById("productContainer");
+
+    function renderSummary() {
+      summaryBody.innerHTML = '';
+      for (const code in summaryData) {
+        const { name, qty, time } = summaryData[code];
+        const row = `<tr><td>${code}</td><td>${name}</td><td>${qty}</td><td>${time || ''}</td></tr>`;
+        summaryBody.insertAdjacentHTML('beforeend', row);
+      }
+    }
+
+    function handleClick(product) {
+      const qty = prompt(`請輸入「${product.name}」的數量：`, "1");
+      const quantity = parseInt(qty);
+      if (!isNaN(quantity) && quantity > 0) {
+        summaryData[product.code] = {
+          name: product.name,
+          qty: quantity,
+          time: new Date().toLocaleString('zh-TW')
+        };
+        renderSummary();
+      }
+      clearSearch();
+    }
+
+    function clearSummary() {
+      for (const code in summaryData) {
+        delete summaryData[code];
+      }
+      renderSummary();
+    }
+
+    function clearSearch() {
+      searchInput.value = '';
+      productContainer.innerHTML = '';
+    }
+
+    function doSearch() {
+      const value = searchInput.value.trim();
+      if (!value) return;
+
+      const matched = products.filter(p =>
+        p.name.includes(value) || p.code.includes(value)
+      ).sort((a, b) => a.code.localeCompare(b.code));
+
+      productContainer.innerHTML = '';
+      if (matched.length > 0) {
+        const table = document.createElement('table');
+        table.innerHTML = '<thead><tr><th>品號</th><th>品名</th></tr></thead>';
+        const tbody = document.createElement('tbody');
+
+        matched.forEach(product => {
+          const row = document.createElement('tr');
+          row.classList.add('clickable');
+          row.innerHTML = `<td>${product.code}</td><td>${product.name}</td>`;
+          row.addEventListener('click', () => handleClick(product));
+          tbody.appendChild(row);
+        });
+
+        table.appendChild(tbody);
+        productContainer.appendChild(table);
+      }
+    }
+
+    function captureTable() {
+      const tableSection = document.getElementById("tableSection");
+      html2canvas(tableSection).then(canvas => {
+        const link = document.createElement("a");
+        link.download = `關東煮紀錄表格_${new Date().toISOString().slice(0,19).replace(/[:T]/g, "-")}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+      });
+    }
+
+    setInterval(() => {
+      document.getElementById("currentDate").textContent = new Date().toLocaleString('zh-TW');
+    }, 1000);
+
+    searchInput.addEventListener("input", () => {
+      doSearch();
+    });
+  </script>
+</body>
+</html>

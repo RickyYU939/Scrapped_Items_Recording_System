@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>果汁類變紀錄系統</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 10px;
+      padding: 0;
+      background-color: #fff;
+    }
+    input[type="text"] {
+      width: calc(100% - 230px);
+      padding: 8px;
+      margin: 10px 0;
+      font-size: 16px;
+      box-sizing: border-box;
+      display: inline-block;
+    }
+    #clearSearchBtn, #searchBtn {
+      width: 100px;
+      margin-left: 5px;
+      font-size: 16px;
+      padding: 8px;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #clearSearchBtn {
+      background-color: #1976d2;
+    }
+    #clearSearchBtn:hover {
+      background-color: #1565c0;
+    }
+    #searchBtn {
+      background-color: #4caf50;
+      display: none;
+    }
+    #searchBtn:hover {
+      background-color: #388e3c;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 16px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+      word-break: break-word;
+    }
+    td:nth-child(1),
+    td:nth-child(3),
+    td:nth-child(4) {
+      white-space: nowrap;
+    }
+    th {
+      background-color: #f9f9f9;
+    }
+    tr.clickable:hover {
+      background-color: #f0f8ff;
+      cursor: pointer;
+    }
+    h2, h3 {
+      font-size: 20px;
+      margin-top: 20px;
+    }
+    button {
+      margin-top: 10px;
+    }
+    #tableSection {
+      overflow-x: auto;
+    }
+    @media (max-width: 600px) {
+      table, th, td {
+        font-size: 14px;
+      }
+      h2, h3 {
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div style="text-align: right; font-size: 14px; color: #555; margin-bottom: 5px;">
+    <span id="currentDate"></span>
+  </div>
+  <h2>商品搜尋（請輸入後點選商品搜尋結果）</h2>
+  <div>
+    <input type="text" id="searchInput" placeholder="搜尋品名...">
+    <button id="searchBtn" onclick="doSearch()">搜尋</button>
+    <button id="clearSearchBtn" onclick="clearSearch()">清除搜尋</button>
+  </div>
+
+  <div id="productContainer"></div>
+
+  <h3>點選商品數量紀錄</h3>
+  <div id="tableSection">
+    <table id="summary">
+      <thead>
+        <tr><th>品號</th><th>品名</th><th>數量</th><th>記錄時間</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <button onclick="clearSummary()">清除所有紀錄</button>
+  <button onclick="captureTable()">截圖表格</button>
+  <button onclick="location.href='index.html'">回到首頁</button>
+
+  <script>
+    const products = [
+      { code: '430706', name: '茶葉蛋業務蛋' },
+      { code: '360802', name: '源牧鮮蛋' },
+      { code: '420360', name: '茶葉用蛋盒裝（10人裝）' },
+      { code: '315397', name: '瑞穗鮮乳930ml（盒）' },
+      { code: '352407', name: '果汁類變-瑞穗鮮乳930ml（盒）' },
+      { code: '439064', name: '瑞穗鮮乳1858ml（瓶）' },
+      { code: '670736', name: '果汁類變-瑞穗鮮乳1858ml（盒）' },
+      { code: '932033', name: 'AB無加糖優酪乳206ml' },
+      { code: '352404', name: '果汁類變-AB無加糖優酪乳206ml' },
+      { code: '130556', name: '統一布丁（小）' },
+      { code: '502367', name: '果汁類變-統一布丁（小）' },
+      { code: '670738', name: '類變專用-瑞穗鮮乳930ml（盒）' },
+      { code: '410054', name: '北海道十勝四葉特選鮮乳' },
+      { code: '624612', name: '類變專用-北海道十勝四葉特選鮮乳' },
+      { code: '575432', name: '北海道函館直送3.7鮮乳' },
+      { code: '624511', name: '類變專用-北海道函館直送3.7鮮乳' },
+      { code: '568704', name: 'NuZilk紐西蘭進口草飼鮮乳1000ml' },
+      { code: '624491', name: '類變專用-紐西蘭進口鮮乳1000ml' },
+      { code: '679506', name: 'PureSource澳洲進口鮮乳' },
+      { code: '624583', name: '類變專用-PureSource澳洲進口鮮乳' }
+    ];
+
+    const linkedProducts = {
+      '932033': ['352404'],
+      '352404': ['932033'],
+      '315397': ['352407'],
+      '352407': ['315397'],
+      '439064': ['670736'],
+      '670736': ['439064'],
+      '130556': ['502367'],
+      '502367': ['130556']
+    };
+
+    const summaryData = {};
+    const summaryBody = document.querySelector("#summary tbody");
+    const searchInput = document.querySelector("#searchInput");
+    const productContainer = document.getElementById("productContainer");
+
+    function renderSummary() {
+      summaryBody.innerHTML = '';
+
+      const sortedEntries = Object.entries(summaryData).map(([code, data]) => {
+        let groupKey = code;
+
+        if (linkedProducts[code]) {
+          const allRelated = [code, ...linkedProducts[code]];
+          groupKey = allRelated.sort()[0];
+        } else {
+          for (const [mainCode, linkedCodes] of Object.entries(linkedProducts)) {
+            if (linkedCodes.includes(code)) {
+              const allRelated = [mainCode, ...linkedCodes];
+              groupKey = allRelated.sort()[0];
+              break;
+            }
+          }
+        }
+
+        return { code, ...data, groupKey };
+      });
+
+      sortedEntries.sort((a, b) => {
+        if (a.groupKey !== b.groupKey) {
+          return a.groupKey.localeCompare(b.groupKey);
+        }
+        return a.code.localeCompare(b.code);
+      });
+
+      sortedEntries.forEach(entry => {
+        const row = `<tr><td>${entry.code}</td><td>${entry.name}</td><td>${entry.qty}</td><td>${entry.time || ''}</td></tr>`;
+        summaryBody.insertAdjacentHTML('beforeend', row);
+      });
+    }
+
+    function handleClick(product) {
+      const qty = prompt(`請輸入「${product.name}」的數量：`, "1");
+      const quantity = parseInt(qty);
+      if (!qty || isNaN(quantity) || quantity <= 0) return;
+
+      const time = new Date().toLocaleString('zh-TW');
+
+      if (summaryData[product.code]) {
+        summaryData[product.code].qty += quantity;
+        summaryData[product.code].time = time;
+      } else {
+        summaryData[product.code] = {
+          name: product.name,
+          qty: quantity,
+          time: time
+        };
+      }
+
+      const linked = linkedProducts[product.code];
+      if (linked && linked.length > 0) {
+        linked.forEach(linkedCode => {
+          const linkedProduct = products.find(p => p.code === linkedCode);
+          if (linkedProduct) {
+            if (summaryData[linkedCode]) {
+              summaryData[linkedCode].qty += quantity;
+              summaryData[linkedCode].time = time;
+            } else {
+              summaryData[linkedCode] = {
+                name: linkedProduct.name,
+                qty: quantity,
+                time: time
+              };
+            }
+          }
+        });
+      }
+
+      renderSummary();
+      clearSearch();
+    }
+
+    function clearSummary() {
+      for (const code in summaryData) {
+        delete summaryData[code];
+      }
+      renderSummary();
+    }
+
+    function clearSearch() {
+      searchInput.value = '';
+      productContainer.innerHTML = '';
+    }
+
+    function doSearch() {
+      const value = searchInput.value.trim();
+      if (!value) return;
+
+      const matched = products.filter(p =>
+        p.name.includes(value) || p.code.includes(value)
+      ).sort((a, b) => a.code.localeCompare(b.code));
+
+      productContainer.innerHTML = '';
+      if (matched.length > 0) {
+        const table = document.createElement('table');
+        table.innerHTML = '<thead><tr><th>品號</th><th>品名</th></tr></thead>';
+        const tbody = document.createElement('tbody');
+
+        matched.forEach(product => {
+          const row = document.createElement('tr');
+          row.classList.add('clickable');
+          row.innerHTML = `<td>${product.code}</td><td>${product.name}</td>`;
+          row.addEventListener('click', () => handleClick(product));
+          tbody.appendChild(row);
+        });
+
+        table.appendChild(tbody);
+        productContainer.appendChild(table);
+      }
+    }
+
+    function captureTable() {
+      const tableSection = document.getElementById("tableSection");
+      html2canvas(tableSection).then(canvas => {
+        const link = document.createElement("a");
+        link.download = `果汁類變紀錄表格_${new Date().toISOString().slice(0,19).replace(/[:T]/g, "-")}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+      });
+    }
+
+    setInterval(() => {
+      document.getElementById("currentDate").textContent = new Date().toLocaleString('zh-TW');
+    }, 1000);
+
+    searchInput.addEventListener("input", () => {
+      doSearch();
+    });
+  </script>
+</body>
+</html>

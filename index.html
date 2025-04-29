@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>首頁選單</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      font-family: sans-serif;
+      background-color: #fafafa;
+    }
+    h1 {
+      margin-bottom: 40px;
+      font-size: 28px;
+    }
+    .menu-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .menu-button {
+      padding: 15px 30px;
+      font-size: 18px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      width: 200px;
+      text-align: center;
+    }
+    .menu-button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <h1>自助區報廢登記系統</h1>
+  <div class="menu-grid">
+    <button class="menu-button" onclick="location.href='liwei2.html'">滷味、熱狗、茶葉蛋、養樂多</button>
+    <button class="menu-button" onclick="location.href='guandong2.html'">關東煮</button>
+    <button class="menu-button" onclick="location.href='juice2.html'">果汁類變紀錄表</button>
+
+    
+  </div>
+</body>
+</html>

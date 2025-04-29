@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>滷味報廢紀錄系統</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 10px;
+      padding: 0;
+      background-color: #fff;
+    }
+    input[type="text"] {
+      width: calc(100% - 230px);
+      padding: 8px;
+      margin: 10px 0;
+      font-size: 16px;
+      box-sizing: border-box;
+      display: inline-block;
+    }
+    #clearSearchBtn, #searchBtn {
+      width: 100px;
+      margin-left: 5px;
+      font-size: 16px;
+      padding: 8px;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #clearSearchBtn {
+      background-color: #1976d2;
+    }
+    #clearSearchBtn:hover {
+      background-color: #1565c0;
+    }
+    #searchBtn {
+      background-color: #4caf50;
+      display: none;
+    }
+    #searchBtn:hover {
+      background-color: #388e3c;
+    }
+    #tableSection {
+      overflow-x: auto; /* ★ 表格區塊左右滑動 */
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 16px;
+      min-width: 600px; /* ★ 保持表格最低寬度 */
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+      white-space: nowrap;    /* ★ 強制不換行 */
+      overflow: hidden;       /* ★ 超出隱藏 */
+      text-overflow: ellipsis; /* ★ 超出時顯示... */
+    }
+    th {
+      background-color: #f9f9f9;
+    }
+    tr.clickable:hover {
+      background-color: #f0f8ff;
+      cursor: pointer;
+    }
+    h2, h3 {
+      font-size: 20px;
+      margin-top: 20px;
+    }
+    button {
+      margin-top: 10px;
+    }
+    @media (max-width: 600px) {
+      table, th, td {
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      h2, h3 {
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div style="text-align: right; font-size: 14px; color: #555; margin-bottom: 5px;">
+    <span id="currentDate"></span>
+  </div>
+
+  <h2>商品搜尋（請輸入後點選商品搜尋結果）</h2>
+  <div>
+    <input type="text" id="searchInput" placeholder="搜尋品名...">
+    <button id="searchBtn" onclick="doSearch()">搜尋</button>
+    <button id="clearSearchBtn" onclick="clearSearch()">清除搜尋</button>
+  </div>
+
+  <div id="productContainer"></div>
+
+  <h3>點選商品數量紀錄</h3>
+  <div id="tableSection">
+    <table id="summary">
+      <thead>
+        <tr><th>品號</th><th>品名</th><th>數量</th><th>記錄時間</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <button onclick="clearSummary()">清除所有紀錄</button>
+  <button onclick="captureTable()">截圖表格</button>
+  <button onclick="location.href='index.html'">回到首頁</button>
+
+  <script>
+    const products = [
+      { code: '430670', name: '茶葉蛋' },
+      { code: '148887', name: '養樂多' },
+      { code: '561888', name: '三起司熱狗' },
+      { code: '633875', name: '美式原味熱狗' },
+      { code: '454413', name: '橋村辣醬熱狗' },
+      { code: '588995', name: '曼哈頓風味熱狗' },
+      { code: '372703', name: '關東煮科學麵' },
+      { code: '443100', name: '關東煮春雨' },
+      { code: '398740', name: '滷味蘿蔔' },
+      { code: '402723', name: '滷味豬血' },
+      { code: '402649', name: '（滷）米血糕（滷味用）' },
+      { code: '398732', name: '滷味蘭花干' },
+      { code: '398797', name: '滷味天婦羅' },
+      { code: '402688', name: '滷味炸豆包' },
+      { code: '421901', name: '滷味日式炙燒軟骨串' },
+      { code: '421778', name: '滷味台灣黑輪' },
+      { code: '421810', name: '滷味豬肉貢丸' },
+      { code: '473062', name: '香蔥肉丸' },
+      { code: '349669', name: '爆汁豆干' },
+      { code: '491987', name: '滷味手工高麗菜捲' },
+      { code: '467186', name: '滷味百頁豆腐' },
+      { code: '488554', name: '滷味日式魚豆腐' },
+      { code: '625852', name: '滷味香濃芋頭燒' }
+    ];
+
+    const summaryData = {};
+    const summaryBody = document.querySelector("#summary tbody");
+    const searchInput = document.querySelector("#searchInput");
+    const productContainer = document.getElementById("productContainer");
+
+    function renderSummary() {
+      summaryBody.innerHTML = '';
+      for (const code in summaryData) {
+        const { name, qty, time } = summaryData[code];
+        const row = `<tr><td>${code}</td><td>${name}</td><td>${qty}</td><td>${time || ''}</td></tr>`;
+        summaryBody.insertAdjacentHTML('beforeend', row);
+      }
+    }
+
+    function handleClick(product) {
+      const qty = prompt(`請輸入「${product.name}」的數量：`, "1");
+      const quantity = parseInt(qty);
+      if (!isNaN(quantity) && quantity > 0) {
+        summaryData[product.code] = {
+          name: product.name,
+          qty: quantity,
+          time: new Date().toLocaleString('zh-TW')
+        };
+        renderSummary();
+      }
+      clearSearch();
+    }
+
+    function clearSummary() {
+      for (const code in summaryData) {
+        delete summaryData[code];
+      }
+      renderSummary();
+    }
+
+    function clearSearch() {
+      searchInput.value = '';
+      productContainer.innerHTML = '';
+    }
+
+    function doSearch() {
+      const value = searchInput.value.trim();
+      if (!value) return;
+
+      const matched = products.filter(p =>
+        p.name.includes(value) || p.code.includes(value)
+      ).sort((a, b) => a.code.localeCompare(b.code));
+
+      productContainer.innerHTML = '';
+      if (matched.length > 0) {
+        const table = document.createElement('table');
+        table.innerHTML = '<thead><tr><th>品號</th><th>品名</th></tr></thead>';
+        const tbody = document.createElement('tbody');
+
+        matched.forEach(product => {
+          const row = document.createElement('tr');
+          row.classList.add('clickable');
+          row.innerHTML = `<td>${product.code}</td><td>${product.name}</td>`;
+          row.addEventListener('click', () => handleClick(product));
+          tbody.appendChild(row);
+        });
+
+        table.appendChild(tbody);
+        productContainer.appendChild(table);
+      }
+    }
+
+    function captureTable() {
+      const tableSection = document.getElementById("tableSection");
+      html2canvas(tableSection).then(canvas => {
+        const link = document.createElement("a");
+        link.download = `滷味報廢紀錄_${new Date().toISOString().slice(0,19).replace(/[:T]/g, "-")}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+      });
+    }
+
+    setInterval(() => {
+      document.getElementById("currentDate").textContent = new Date().toLocaleString('zh-TW');
+    }, 1000);
+
+    searchInput.addEventListener("input", () => {
+      doSearch();
+    });
+  </script>
+</body>
+</html>
